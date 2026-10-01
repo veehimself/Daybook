@@ -91,7 +91,7 @@ private fun NameStep(name: String, onName: (String) -> Unit) {
     )
     Column {
         Txt(
-            "👋", size = 64.sp,
+            "👋🏽", size = 64.sp,            
             modifier = Modifier.graphicsLayer { rotationZ = wave; transformOrigin = TransformOrigin(0.7f, 0.8f) }
         )
         Spacer(Modifier.height(16.dp))

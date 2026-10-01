@@ -73,7 +73,7 @@ fun ProfileScreen(vm: MainViewModel, p: Profile) {
             Txt("Hey", size = 44.sp, weight = FontWeight.Bold)
             Spacer(Modifier.width(12.dp))
             Txt(
-                "👋", size = 40.sp,
+                "👋🏽", size = 40.sp,                
                 modifier = Modifier.graphicsLayer {
                     rotationZ = wave
                     transformOrigin = TransformOrigin(0.7f, 0.8f)
