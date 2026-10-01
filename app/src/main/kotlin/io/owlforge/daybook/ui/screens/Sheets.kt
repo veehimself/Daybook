@@ -127,9 +127,8 @@ fun ColumnScope.AddTaskContent(
                 if (!endTouched || end <= v) end = quickEnd(v)
             } else {
                 endTouched = true
-                // Picked a time at/before the start (e.g. 12:30 "AM" after a 10:30 AM start)? They meant PM.
-                end = if (v <= start && v + 720 in (start + 1)..1439) v + 720 else v
-            }
+                end = v // the hour wheel flips AM/PM itself when it crosses 11 ↔ 12
+            }        
         }
     }
 

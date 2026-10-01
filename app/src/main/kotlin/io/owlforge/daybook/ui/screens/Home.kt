@@ -63,17 +63,26 @@ import io.owlforge.daybook.util.greeting
 import kotlinx.coroutines.delay
 import me.saket.swipe.SwipeAction
 import me.saket.swipe.SwipeableActionsBox
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+
 
 @Composable
 fun HomeScreen(vm: MainViewModel, name: String) {
-    val tasks by vm.tasks.collectAsStateWithLifecycle()
+    val tasks by vm.tasks.collectAsStateWithLifecycle() // null = this day is still loading
     val offset by vm.dayOffset.collectAsStateWithLifecycle()
+    val current = tasks
+
+    // last loaded list: keeps the summary bar steady while the next day loads
+    val shown = remember { mutableStateOf<List<PlanTask>>(emptyList()) }
+    if (current != null) shown.value = current
+    val list = shown.value
 
     // 1s ticks only while a task is running (drives the in-app countdown), otherwise relaxed.
-    val now by produceState(System.currentTimeMillis(), tasks) {
+    val now by produceState(System.currentTimeMillis(), list) {
         while (true) {
             value = System.currentTimeMillis()
-            val live = tasks.any { value >= it.startMillis && value < it.endMillis }
+            val live = list.any { value >= it.startMillis && value < it.endMillis }
             delay(if (live) 1_000L else 15_000L)
         }
     }
@@ -89,15 +98,16 @@ fun HomeScreen(vm: MainViewModel, name: String) {
         Txt(name, size = 34.sp, weight = FontWeight.Bold, modifier = Modifier.entrance(1))
         Spacer(Modifier.height(18.dp))
         Segmented(listOf("Today", "Tomorrow"), offset) { vm.dayOffset.value = it }
-        SummaryStrip(tasks)
+        SummaryStrip(list)
 
         LazyColumn(
             contentPadding = PaddingValues(bottom = 190.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            if (tasks.isEmpty()) item(key = "empty") { EmptyState(offset) }
-            itemsIndexed(tasks, key = { _, t -> t.id }) { i, t ->
+            // only a day that has finished loading AND is truly empty gets the empty state
+            if (current != null && current.isEmpty()) item(key = "empty") { EmptyState(offset) }
+            itemsIndexed(current.orEmpty(), key = { _, t -> t.id }) { i, t ->
                 TaskCard(
                     t = t,
                     now = now,
@@ -143,9 +153,9 @@ private fun EmptyState(offset: Int) {
         -20f, 20f, infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "b"
     )
     Column(
-        Modifier.fillMaxWidth().padding(top = 56.dp),
+        Modifier.fillMaxWidth().padding(top = 56.dp).entrance(),
         horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    ) {        
         Txt(
             if (offset == 1) "🌙" else "☀️", size = 64.sp,
             modifier = Modifier.graphicsLayer { translationY = bob }

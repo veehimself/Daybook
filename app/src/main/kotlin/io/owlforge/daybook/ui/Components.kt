@@ -264,32 +264,57 @@ fun BottomSheet(visible: Boolean, onDismiss: () -> Unit, content: @Composable Co
 
 // ───────────────────────── time wheels ─────────────────────────
 
+private const val LOOPS = 400 // virtual repetitions that make a wheel "infinite"
+
 /**
- * Controlled wheel. User scrolls → [onSelect]. Parent changes [selectedIndex]
- * (auto +30 min, AM/PM roll-over) → the wheel animates there by itself.
+ * [selectedIndex] / [onSelect] always speak in 0 until labels.size, looping or not.
+ * User scrolls → [onSelect]. Parent changes [selectedIndex] → the wheel travels there the short way
+ * round (instantly when the target looks identical, e.g. 10 AM ↔ 10 PM).
  */
 @Composable
-fun Wheel(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun Wheel(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    loop: Boolean = false,
+) {
+    val n = labels.size
+    val total = if (loop) n * LOOPS else n
     val itemH = 46.dp
     val itemPx = with(LocalDensity.current) { itemH.toPx() }
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    val state = rememberLazyListState(
+        initialFirstVisibleItemIndex = if (loop) n * (LOOPS / 2) + selectedIndex else selectedIndex
+    )
     val fling = rememberSnapFlingBehavior(state)
-    val selected by remember {
+    val absolute by remember {
         derivedStateOf {
             (state.firstVisibleItemIndex + if (state.firstVisibleItemScrollOffset > itemPx / 2) 1 else 0)
-                .coerceIn(0, items.lastIndex)
+                .coerceIn(0, total - 1)
         }
     }
+    val value = absolute % n
     val report by rememberUpdatedState(onSelect)
     var programmatic by remember { mutableStateOf(false) }
 
-    LaunchedEffect(selected) {
-        if (!programmatic && selected != selectedIndex) report(selected)
+    LaunchedEffect(value) {
+        if (!programmatic && value != selectedIndex) report(value)
     }
     LaunchedEffect(selectedIndex) {
-        if (selectedIndex != selected && !state.isScrollInProgress) {
+        val cur = absolute
+        if (selectedIndex != cur % n && !state.isScrollInProgress) {
+            val target = if (loop) {
+                var d = ((selectedIndex - cur % n) % n + n) % n
+                if (d > n / 2) d -= n
+                (cur + d).coerceIn(0, total - 1)
+            } else selectedIndex
             programmatic = true
-            try { state.animateScrollToItem(selectedIndex) } finally { programmatic = false }
+            try {
+                if (labels[selectedIndex] == labels[cur % n]) state.scrollToItem(target)
+                else state.animateScrollToItem(target)
+            } finally {
+                programmatic = false
+            }
         }
     }
 
@@ -306,11 +331,11 @@ fun Wheel(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modi
             contentPadding = PaddingValues(vertical = itemH),
             modifier = Modifier.fillMaxSize()
         ) {
-            itemsIndexed(items) { i, s ->
+            items(total) { i ->
                 Box(Modifier.height(itemH).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    val on = i == selected
+                    val on = i == absolute
                     Txt(
-                        s,
+                        labels[i % n],
                         size = if (on) 24.sp else 19.sp,
                         weight = if (on) FontWeight.Bold else FontWeight.Normal,
                         color = if (on) Ink.text else Ink.muted,
@@ -322,7 +347,8 @@ fun Wheel(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modi
     }
 }
 
-private val hours12 = (1..12).map { it.toString() }
+// 24 positions labelled 12,1…11,12,1…11: crossing 11 ↔ 12 flips AM/PM by itself, in both directions
+private val hourLabels = (0..23).map { val h = it % 12; (if (h == 0) 12 else h).toString() }
 private val minutes60 = (0..59).map { "%02d".format(it) }
 private val ampm = listOf("AM", "PM")
 
@@ -331,18 +357,14 @@ private val ampm = listOf("AM", "PM")
 fun TimeWheelValue(minuteOfDay: Int, onChange: (Int) -> Unit) {
     val h24 = minuteOfDay / 60
     val m = minuteOfDay % 60
-    val pm = h24 >= 12
-    val h12 = if (h24 % 12 == 0) 12 else h24 % 12
-    fun build(h: Int, min: Int, isPm: Boolean) = ((h % 12) + if (isPm) 12 else 0) * 60 + min
-
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Wheel(hours12, h12 - 1, { onChange(build(it + 1, m, pm)) }, Modifier.weight(1f))
-        Wheel(minutes60, m, { onChange(build(h12, it, pm)) }, Modifier.weight(1f))
-        Wheel(ampm, if (pm) 1 else 0, { onChange(build(h12, m, it == 1)) }, Modifier.weight(1f))
+        Wheel(hourLabels, h24, { onChange(it * 60 + m) }, Modifier.weight(1f), loop = true)
+        Wheel(minutes60, m, { onChange(h24 * 60 + it) }, Modifier.weight(1f), loop = true)
+        Wheel(ampm, h24 / 12, { onChange(((h24 % 12) + 12 * it) * 60 + m) }, Modifier.weight(1f))
     }
 }
 
-/** Uncontrolled wrapper used by onboarding and profile. [hour] is 0–23. */
+/** Uncontrolled wrapper used by onboarding. [hour] is 0–23. */
 @Composable
 fun TimeWheel(hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
     var v by remember { mutableIntStateOf(hour * 60 + minute) }

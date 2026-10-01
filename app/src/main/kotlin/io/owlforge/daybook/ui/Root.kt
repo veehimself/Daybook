@@ -57,6 +57,10 @@ import nl.dionsegijn.konfetti.core.Party
 import nl.dionsegijn.konfetti.core.Position
 import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.util.concurrent.TimeUnit
+import androidx.activity.result.PickVisualMediaRequest
+import io.owlforge.daybook.ui.screens.AvatarSheetContent
+import io.owlforge.daybook.ui.screens.NameSheetContent
+import io.owlforge.daybook.ui.screens.TimeSheetContent
 
 @Composable
 fun DaybookRoot(vm: MainViewModel) {
@@ -96,6 +100,16 @@ private fun Shell(vm: MainViewModel, p: Profile) {
     val tab by vm.tab.collectAsStateWithLifecycle()
     val showAdd by vm.showAdd.collectAsStateWithLifecycle()
     val openTask by vm.openTask.collectAsStateWithLifecycle()
+
+    val profileSheet by vm.profileSheet.collectAsStateWithLifecycle()
+    val lastSheet = remember { mutableStateOf(ProfileSheet.NAME) }
+    profileSheet?.let { lastSheet.value = it }
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            vm.setAvatarPhoto(uri)
+            vm.profileSheet.value = null
+        }
+    }
 
     // Keep the last task around so the sheet can finish its exit animation.
     val lastTask = remember { mutableStateOf<PlanTask?>(null) }
@@ -152,6 +166,26 @@ private fun Shell(vm: MainViewModel, p: Profile) {
                         vm.mark(t.id, TaskStatus.INCOMPLETE)
                         vm.openTaskId.value = null
                     },
+                )
+            }
+        }
+
+        BottomSheet(profileSheet != null, { vm.profileSheet.value = null }) {
+            when (lastSheet.value) {
+                ProfileSheet.NAME -> NameSheetContent(p.name) {
+                    vm.saveProfile(it, p.planHour, p.planMinute)
+                    vm.profileSheet.value = null
+                }
+                ProfileSheet.TIME -> TimeSheetContent(p.planHour, p.planMinute) { h, m ->
+                    vm.saveProfile(p.name, h, m)
+                    vm.profileSheet.value = null
+                }
+                ProfileSheet.AVATAR -> AvatarSheetContent(
+                    current = p.avatar,
+                    onPick = { vm.setAvatar(it); vm.profileSheet.value = null },
+                    onPhoto = {
+                        photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
                 )
             }
         }
