@@ -25,7 +25,8 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
 
       # No gradle wrapper is committed, so the action provisions Gradle itself (and caches it).
       - uses: gradle/actions/setup-gradle@v4
