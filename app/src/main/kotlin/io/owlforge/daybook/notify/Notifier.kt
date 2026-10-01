@@ -70,7 +70,7 @@ class Notifier(private val ctx: Context) {
 
     private fun base(channel: String) = NotificationCompat.Builder(ctx, channel)
         .setSmallIcon(R.drawable.ic_stat_daybook)
-        .setColor(0xFF7C5CFF.toInt())
+        .setColor(0xFFEDE6D6.toInt())
         .setAutoCancel(true)
         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 

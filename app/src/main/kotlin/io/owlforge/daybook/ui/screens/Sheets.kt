@@ -39,7 +39,7 @@ import io.owlforge.daybook.data.PlanTask
 import io.owlforge.daybook.ui.Capsule
 import io.owlforge.daybook.ui.Ink
 import io.owlforge.daybook.ui.StatusBadge
-import io.owlforge.daybook.ui.TimeWheel
+import io.owlforge.daybook.ui.TimeWheelValue
 import io.owlforge.daybook.ui.Txt
 import io.owlforge.daybook.ui.bounceClick
 import io.owlforge.daybook.util.fmtDate
@@ -50,6 +50,13 @@ import io.owlforge.daybook.util.zone
 import java.time.Instant
 import java.time.LocalTime
 import kotlin.math.roundToInt
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+
 
 private fun defaultStartMinutes(dayOffset: Int): Int {
     if (dayOffset == 1) return 9 * 60
@@ -66,7 +73,12 @@ fun ColumnScope.AddTaskContent(
     val def = remember { defaultStartMinutes(dayOffset) }
     var title by remember { mutableStateOf("") }
     var start by remember { mutableIntStateOf(def) }
-    var end by remember { mutableIntStateOf((def + 60).coerceAtMost(23 * 60 + 59)) }
+
+    // Quick tasks: end defaults to start + 30 min until the user sets it by hand.
+    fun quickEnd(startMin: Int) = (startMin + 30).coerceAtMost(23 * 60 + 59)
+    var end by remember { mutableIntStateOf(quickEnd(def)) }
+    var endTouched by remember { mutableStateOf(false) }
+
     var active by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var tick by remember { mutableIntStateOf(0) }
@@ -82,8 +94,10 @@ fun ColumnScope.AddTaskContent(
         value = title,
         onValueChange = { title = it; error = null },
         singleLine = true,
-        textStyle = TextStyle(color = Ink.text, fontSize = 18.sp, fontWeight = FontWeight.Medium),
-        cursorBrush = SolidColor(Ink.violet),
+        textStyle = TextStyle(
+            color = Ink.text, fontSize = 18.sp, fontWeight = FontWeight.Medium, fontFamily = Fonts.sans
+        ),
+        cursorBrush = SolidColor(Ink.accent),
         decorationBox = { inner ->
             Box {
                 if (title.isEmpty()) Txt("What's the task?", size = 18.sp, color = Ink.muted)
@@ -104,11 +118,26 @@ fun ColumnScope.AddTaskContent(
     Spacer(Modifier.height(8.dp))
 
     key(active) {
-        val cur = if (active == 0) start else end
-        TimeWheel(hour = cur / 60, minute = cur % 60) { h, m ->
-            if (active == 0) start = h * 60 + m else end = h * 60 + m
+        TimeWheelValue(if (active == 0) start else end) { v ->
             error = null
+            if (active == 0) {
+                start = v
+                // follow the start with +30 min (animated by the chip + wheel), unless the user took over
+                if (!endTouched || end <= v) end = quickEnd(v)
+            } else {
+                endTouched = true
+                // Picked a time at/before the start (e.g. 12:30 "AM" after a 10:30 AM start)? They meant PM.
+                end = if (v <= start && v + 720 in (start + 1)..1439) v + 720 else v
+            }
         }
+    }
+
+    if (end > start) {
+        Txt(
+            "Duration · ${fmtDuration((end - start) * 60_000L)}",
+            size = 13.sp, color = Ink.muted,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 
     AnimatedVisibility(visible = error != null) {
@@ -121,7 +150,7 @@ fun ColumnScope.AddTaskContent(
     }
     Spacer(Modifier.height(16.dp))
 
-    Capsule("Add task", Ink.violet, Modifier.fillMaxWidth(), filled = true) {
+    Capsule("Add task", Ink.accent, Modifier.fillMaxWidth(), filled = true) {
         onSubmit(title, start, end) { err ->
             if (err != null) { error = err; tick++ }
         }
@@ -130,11 +159,11 @@ fun ColumnScope.AddTaskContent(
 
 @Composable
 private fun TimeChip(label: String, value: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val c = if (selected) Ink.violet else Ink.line
+    val c = if (selected) Ink.accent else Ink.line
     Box(
         modifier
             .bounceClick(onClick)
-            .background(if (selected) Ink.violet.copy(alpha = 0.16f) else Color.Transparent, RoundedCornerShape(50))
+            .background(if (selected) Ink.accent.copy(alpha = 0.14f) else Color.Transparent, RoundedCornerShape(50))
             .border(1.5.dp, c, CircleShape)
             .padding(vertical = 10.dp),
         contentAlignment = Alignment.Center
@@ -142,11 +171,17 @@ private fun TimeChip(label: String, value: String, selected: Boolean, modifier: 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Txt(label, size = 13.sp, color = Ink.muted)
             Spacer(Modifier.width(8.dp))
-            Txt(value, size = 16.sp, weight = FontWeight.Bold, mono = true)
+            AnimatedContent(
+                targetState = value,
+                transitionSpec = {
+                    (slideInVertically(tween(280)) { it } + fadeIn(tween(280))) togetherWith
+                        (slideOutVertically(tween(200)) { -it } + fadeOut(tween(160)))
+                },
+                label = "chipValue"
+            ) { v -> Txt(v, size = 16.sp, weight = FontWeight.Bold, mono = true) }
         }
     }
 }
-
 /** Opened from the "did you finish?" notification (or by tapping any task card). */
 @Composable
 fun ColumnScope.TaskDetailContent(t: PlanTask, onComplete: () -> Unit, onIncomplete: () -> Unit) {

@@ -94,7 +94,7 @@ private fun DayCard(r: DayReport, modifier: Modifier) {
                 Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(frac)
-                    .background(Brush.horizontalGradient(listOf(Ink.violet, Ink.mint)), CircleShape)
+                    .background(Brush.horizontalGradient(listOf(Ink.accent, Ink.mint)), CircleShape)
             )
         }
         Spacer(Modifier.height(14.dp))

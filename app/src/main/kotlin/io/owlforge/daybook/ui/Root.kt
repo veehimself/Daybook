@@ -67,7 +67,7 @@ fun DaybookRoot(vm: MainViewModel) {
         else -> 2
     }
     Box(Modifier.fillMaxSize().background(Ink.bg)) {
-        AuroraBackground()
+        SkyBackground()
         Crossfade(stage, animationSpec = tween(400), label = "root") { s ->
             when (s) {
                 1 -> OnboardingGate(vm)
@@ -124,7 +124,7 @@ private fun Shell(vm: MainViewModel, p: Profile) {
                 label = "bob"
             )
             Capsule(
-                "＋  Plan a task", Ink.violet, filled = true,
+                "＋  Plan a task", Ink.accent, filled = true,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -166,7 +166,7 @@ private fun Celebration() {
         listOf(
             Party(
                 speed = 0f, maxSpeed = 32f, damping = 0.9f, spread = 360,
-                colors = listOf(0x7C5CFF, 0x3DFFB5, 0xFF5C7A, 0xFFC857),
+                colors = listOf(0xEDE6D6, 0x3DFFB5, 0xFF5C7A, 0xFFC857),
                 position = Position.Relative(0.5, 0.35),
                 emitter = Emitter(duration = 150, TimeUnit.MILLISECONDS).max(120)
             )
@@ -189,7 +189,7 @@ private fun BottomNav(selected: Int, modifier: Modifier, onSelect: (Int) -> Unit
     ) {
         items.forEachIndexed { i, label ->
             val on = i == selected
-            val bg by animateColorAsState(if (on) Ink.violet else Ink.surface, tween(250), label = "navbg")
+            val bg by animateColorAsState(if (on) Ink.accent else Ink.surface, tween(250), label = "navbg")
             Box(
                 Modifier
                     .background(bg, CircleShape)
@@ -197,7 +197,7 @@ private fun BottomNav(selected: Int, modifier: Modifier, onSelect: (Int) -> Unit
                     .padding(horizontal = 22.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Txt(label, weight = FontWeight.SemiBold, size = 14.sp, color = if (on) Ink.text else Ink.muted)
+                Txt(label, weight = FontWeight.SemiBold, size = 14.sp, color = if (on) Ink.bg else Ink.muted)
             }
         }
     }

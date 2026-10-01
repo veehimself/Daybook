@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.owlforge.daybook.data.TaskStatus
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
 
 // ───────────────────────── text ─────────────────────────
 
@@ -93,14 +94,14 @@ fun Txt(
             color = color,
             fontSize = size,
             fontWeight = weight,
-            fontFamily = if (mono) FontFamily.Monospace else FontFamily.SansSerif,
+            fontFamily = if (mono) Fonts.mono else Fonts.sans,
+            letterSpacing = if (size.value >= 28f) (-0.6).sp else 0.sp,
             textAlign = align,
         ),
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )
 }
-
 // ───────────────────────── motion helpers ─────────────────────────
 
 /** Springy press-down scale + click. */
@@ -130,28 +131,6 @@ fun Modifier.entrance(index: Int = 0): Modifier {
     }
 }
 
-@Composable
-fun AuroraBackground() {
-    val t = rememberInfiniteTransition(label = "aurora")
-    val a by t.animateFloat(
-        0f, 1f,
-        infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "a"
-    )
-    Canvas(Modifier.fillMaxSize()) {
-        val r = size.width * 0.95f
-        val c1 = Offset(size.width * (0.1f + 0.7f * a), size.height * (0.12f + 0.06f * a))
-        drawCircle(
-            Brush.radialGradient(listOf(Ink.violet.copy(alpha = 0.38f), Color.Transparent), center = c1, radius = r),
-            radius = r, center = c1
-        )
-        val c2 = Offset(size.width * (0.9f - 0.7f * a), size.height * (0.85f - 0.1f * a))
-        drawCircle(
-            Brush.radialGradient(listOf(Ink.mint.copy(alpha = 0.16f), Color.Transparent), center = c2, radius = r),
-            radius = r, center = c2
-        )
-    }
-}
 
 @Composable
 fun PulseDot(color: Color = Ink.mint) {
@@ -218,7 +197,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
                 .offset(x = x)
                 .width(w)
                 .height(40.dp)
-                .background(Ink.violet, CircleShape)
+                .background(Ink.accent, CircleShape)
         )
         Row {
             options.forEachIndexed { i, s ->
@@ -232,7 +211,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
                         ) { onSelect(i) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Txt(s, weight = FontWeight.SemiBold, color = if (i == selected) Ink.text else Ink.muted)
+                    Txt(s, weight = FontWeight.SemiBold, color = if (i == selected) Ink.bg else Ink.muted)
                 }
             }
         }
@@ -285,11 +264,15 @@ fun BottomSheet(visible: Boolean, onDismiss: () -> Unit, content: @Composable Co
 
 // ───────────────────────── time wheels ─────────────────────────
 
+/**
+ * Controlled wheel. User scrolls → [onSelect]. Parent changes [selectedIndex]
+ * (auto +30 min, AM/PM roll-over) → the wheel animates there by itself.
+ */
 @Composable
-fun Wheel(items: List<String>, initial: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun Wheel(items: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     val itemH = 46.dp
     val itemPx = with(LocalDensity.current) { itemH.toPx() }
-    val state = rememberLazyListState(initialFirstVisibleItemIndex = initial)
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
     val fling = rememberSnapFlingBehavior(state)
     val selected by remember {
         derivedStateOf {
@@ -297,14 +280,25 @@ fun Wheel(items: List<String>, initial: Int, onSelect: (Int) -> Unit, modifier: 
                 .coerceIn(0, items.lastIndex)
         }
     }
-    LaunchedEffect(selected) { onSelect(selected) }
+    val report by rememberUpdatedState(onSelect)
+    var programmatic by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selected) {
+        if (!programmatic && selected != selectedIndex) report(selected)
+    }
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex != selected && !state.isScrollInProgress) {
+            programmatic = true
+            try { state.animateScrollToItem(selectedIndex) } finally { programmatic = false }
+        }
+    }
 
     Box(modifier.height(itemH * 3), contentAlignment = Alignment.Center) {
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(itemH)
-                .background(Ink.violet.copy(alpha = 0.16f), RoundedCornerShape(16.dp))
+                .background(Ink.accent.copy(alpha = 0.14f), RoundedCornerShape(16.dp))
         )
         LazyColumn(
             state = state,
@@ -319,7 +313,8 @@ fun Wheel(items: List<String>, initial: Int, onSelect: (Int) -> Unit, modifier: 
                         s,
                         size = if (on) 24.sp else 19.sp,
                         weight = if (on) FontWeight.Bold else FontWeight.Normal,
-                        color = if (on) Ink.text else Ink.muted
+                        color = if (on) Ink.text else Ink.muted,
+                        mono = true
                     )
                 }
             }
@@ -331,17 +326,25 @@ private val hours12 = (1..12).map { it.toString() }
 private val minutes60 = (0..59).map { "%02d".format(it) }
 private val ampm = listOf("AM", "PM")
 
-/** [hour] is 0–23. [onChange] receives 24h hour + minute. */
+/** [minuteOfDay] is 0–1439. Fully controlled: change the value and the wheels animate to it. */
 @Composable
-fun TimeWheel(hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
-    var h12 by remember { mutableIntStateOf(if (hour % 12 == 0) 12 else hour % 12) }
-    var m by remember { mutableIntStateOf(minute) }
-    var pm by remember { mutableStateOf(hour >= 12) }
-    fun push() = onChange((h12 % 12) + if (pm) 12 else 0, m)
+fun TimeWheelValue(minuteOfDay: Int, onChange: (Int) -> Unit) {
+    val h24 = minuteOfDay / 60
+    val m = minuteOfDay % 60
+    val pm = h24 >= 12
+    val h12 = if (h24 % 12 == 0) 12 else h24 % 12
+    fun build(h: Int, min: Int, isPm: Boolean) = ((h % 12) + if (isPm) 12 else 0) * 60 + min
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Wheel(hours12, h12 - 1, { h12 = it + 1; push() }, Modifier.weight(1f))
-        Wheel(minutes60, m, { m = it; push() }, Modifier.weight(1f))
-        Wheel(ampm, if (pm) 1 else 0, { pm = it == 1; push() }, Modifier.weight(1f))
+        Wheel(hours12, h12 - 1, { onChange(build(it + 1, m, pm)) }, Modifier.weight(1f))
+        Wheel(minutes60, m, { onChange(build(h12, it, pm)) }, Modifier.weight(1f))
+        Wheel(ampm, if (pm) 1 else 0, { onChange(build(h12, m, it == 1)) }, Modifier.weight(1f))
     }
+}
+
+/** Uncontrolled wrapper used by onboarding and profile. [hour] is 0–23. */
+@Composable
+fun TimeWheel(hour: Int, minute: Int, onChange: (Int, Int) -> Unit) {
+    var v by remember { mutableIntStateOf(hour * 60 + minute) }
+    TimeWheelValue(v) { v = it; onChange(it / 60, it % 60) }
 }

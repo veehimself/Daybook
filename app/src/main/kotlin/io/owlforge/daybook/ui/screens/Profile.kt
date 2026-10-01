@@ -62,7 +62,7 @@ fun ProfileScreen(vm: MainViewModel, p: Profile) {
             onValueChange = { name = it },
             singleLine = true,
             textStyle = TextStyle(color = Ink.text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
-            cursorBrush = SolidColor(Ink.violet),
+            cursorBrush = SolidColor(Ink.accent),
             modifier = Modifier
                 .fillMaxWidth()
                 .border(1.dp, Ink.line, RoundedCornerShape(18.dp))
@@ -76,7 +76,7 @@ fun ProfileScreen(vm: MainViewModel, p: Profile) {
         TimeWheel(p.planHour, p.planMinute) { hh, mm -> h = hh; m = mm }
 
         Spacer(Modifier.height(24.dp))
-        Capsule("Save", Ink.violet, Modifier.fillMaxWidth(), filled = true) {
+        Capsule("Save", Ink.accent, Modifier.fillMaxWidth(), filled = true) {
             if (name.isNotBlank()) { vm.saveProfile(name, h, m); saved = true }
         }
         AnimatedVisibility(visible = saved) {

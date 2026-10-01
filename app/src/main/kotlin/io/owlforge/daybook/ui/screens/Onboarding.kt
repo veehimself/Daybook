@@ -75,7 +75,7 @@ fun Onboarding(onDone: (name: String, hour: Int, minute: Int) -> Unit) {
         Spacer(Modifier.weight(1f))
         Capsule(
             label = if (step == 0) "Next" else "Let's go",
-            color = Ink.violet,
+            color = Ink.accent,
             filled = true,
             modifier = Modifier.fillMaxWidth().alpha(if (canGo) 1f else 0.4f),
         ) {
@@ -103,7 +103,7 @@ private fun NameStep(name: String, onName: (String) -> Unit) {
             onValueChange = onName,
             singleLine = true,
             textStyle = TextStyle(color = Ink.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
-            cursorBrush = SolidColor(Ink.violet),
+            cursorBrush = SolidColor(Ink.accent),
             decorationBox = { inner ->
                 Column {
                     if (name.isEmpty()) Txt("Your name", size = 22.sp, color = Ink.muted)

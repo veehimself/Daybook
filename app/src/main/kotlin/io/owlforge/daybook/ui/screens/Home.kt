@@ -131,7 +131,7 @@ private fun SummaryStrip(tasks: List<PlanTask>) {
                 Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(frac)
-                    .background(Brush.horizontalGradient(listOf(Ink.violet, Ink.mint)), CircleShape)
+                    .background(Brush.horizontalGradient(listOf(Ink.accent, Ink.mint)), CircleShape)
             )
         }
     }
@@ -174,7 +174,7 @@ private fun TaskCard(
     val accent = when {
         t.status == TaskStatus.COMPLETED -> Ink.mint
         t.status == TaskStatus.INCOMPLETE -> Ink.coral
-        active -> Ink.violet
+        active -> Ink.accent
         needsReview -> Ink.amber
         else -> Ink.muted
     }
@@ -190,7 +190,7 @@ private fun TaskCard(
             Modifier
                 .fillMaxWidth()
                 .background(Ink.card)
-                .border(1.dp, if (active) Ink.violet.copy(alpha = 0.8f) else Ink.line, shape)
+                .border(1.dp, if (active) Ink.accent.copy(alpha = 0.8f) else Ink.line, shape)
                 .bounceClick(onClick)
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -232,7 +232,7 @@ private fun CountdownRing(t: PlanTask, now: Long) {
             val tl = Offset(sw / 2, sw / 2)
             val sz = Size(size.width - sw, size.height - sw)
             drawArc(Ink.line, 0f, 360f, false, tl, sz, style = Stroke(sw))
-            drawArc(Ink.violet, -90f, 360f * frac, false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
+            drawArc(Ink.accent, -90f, 360f * frac, false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
         }
         Txt(fmtCountdown(left), size = 14.sp, weight = FontWeight.Bold, mono = true, align = TextAlign.Center)
     }
