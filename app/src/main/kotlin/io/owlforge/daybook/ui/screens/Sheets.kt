@@ -42,6 +42,7 @@ import io.owlforge.daybook.ui.StatusBadge
 import io.owlforge.daybook.ui.TimeWheelValue
 import io.owlforge.daybook.ui.Txt
 import io.owlforge.daybook.ui.bounceClick
+import io.owlforge.daybook.ui.Fonts
 import io.owlforge.daybook.util.fmtDate
 import io.owlforge.daybook.util.fmtDuration
 import io.owlforge.daybook.util.fmtMinutes
