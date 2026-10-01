@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import io.owlforge.daybook.data.TaskStatus
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.unit.isSpecified
 
 // ───────────────────────── text ─────────────────────────
 
@@ -86,6 +87,7 @@ fun Txt(
     mono: Boolean = false,
     align: TextAlign = TextAlign.Start,
     maxLines: Int = Int.MAX_VALUE,
+    tracking: TextUnit = TextUnit.Unspecified,
 ) {
     BasicText(
         text = text,
@@ -95,13 +97,18 @@ fun Txt(
             fontSize = size,
             fontWeight = weight,
             fontFamily = if (mono) Fonts.mono else Fonts.sans,
-            letterSpacing = if (size.value >= 28f) (-0.6).sp else 0.sp,
+            letterSpacing = when {
+                tracking.isSpecified -> tracking
+                size.value >= 28f -> (-0.6).sp
+                else -> 0.sp
+            },
             textAlign = align,
         ),
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )
 }
+
 // ───────────────────────── motion helpers ─────────────────────────
 
 /** Springy press-down scale + click. */

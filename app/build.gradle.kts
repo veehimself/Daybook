@@ -13,9 +13,9 @@ android {
         applicationId = "io.owlforge.daybook"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10300
-        versionName = "1.3.0"    
-}
+        versionCode = 10301
+        versionName = "1.3.1"
+    }
 
     // Release signing is fed by env vars (set by CI). Without them the APK is built unsigned.
     val keystorePath: String? = System.getenv("KEYSTORE_PATH")

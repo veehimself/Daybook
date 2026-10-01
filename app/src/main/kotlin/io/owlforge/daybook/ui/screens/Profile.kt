@@ -51,6 +51,7 @@ import io.owlforge.daybook.ui.Txt
 import io.owlforge.daybook.ui.bounceClick
 import io.owlforge.daybook.ui.entrance
 import io.owlforge.daybook.util.fmtHm
+import androidx.compose.ui.draw.shadow
 
 @Composable
 fun ProfileScreen(vm: MainViewModel, p: Profile) {
@@ -114,46 +115,60 @@ fun ProfileScreen(vm: MainViewModel, p: Profile) {
 
 @Composable
 private fun ReminderCard(hour: Int, minute: Int, modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(36.dp)
+    val shape = RoundedCornerShape(32.dp)
     Column(
         modifier
             .fillMaxWidth()
-            .bounceClick(onClick)
-            .background(
-                Brush.linearGradient(listOf(Color.White.copy(alpha = 0.16f), Color.White.copy(alpha = 0.05f))),
-                shape
-            )
-            .border(1.5.dp, Ink.text.copy(alpha = 0.85f), shape)
-            .padding(20.dp)
+            .bounceClick(onClick) // first, so the shadow and surface scale together on press
+            .shadow(24.dp, shape, clip = false, ambientColor = Color.Black, spotColor = Color.Black)
+            .background(Ink.card, shape)
+            .background(Brush.linearGradient(listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)), shape)
+            .padding(24.dp)
     ) {
-        Row(
-            Modifier
-                .background(Ink.accent.copy(alpha = 0.16f), CircleShape)
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ClockIcon(Ink.accent, 16.dp)
+        // 1 · eyebrow + edit affordance
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ClockIcon(Ink.muted, 16.dp)
             Spacer(Modifier.width(8.dp))
-            Txt("Daily “plan tomorrow” reminder", size = 14.sp, color = Ink.accent, weight = FontWeight.Medium)
+            Txt(
+                "DAILY REMINDER",
+                size = 12.sp, weight = FontWeight.SemiBold, color = Ink.muted, tracking = 1.4.sp
+            )
+            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier.size(36.dp).background(Ink.accent.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) { PencilIcon(Ink.accent, 16.dp) }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
+
+        // 2 · hero time: big digits, smaller AM/PM sharing the baseline
         AnimatedContent(
-            targetState = fmtHm(hour, minute),
+            targetState = hour * 60 + minute,
             transitionSpec = {
                 (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith
                     (slideOutVertically(tween(200)) { -it } + fadeOut(tween(160)))
             },
             label = "reminderTime"
-        ) { t ->
-            Txt(
-                t, size = 48.sp, weight = FontWeight.Bold, mono = true,
-                align = TextAlign.Center, modifier = Modifier.fillMaxWidth()
-            )
+        ) { v ->
+            val h = v / 60
+            val h12 = if (h % 12 == 0) 12 else h % 12
+            Row {
+                Txt(
+                    "%d:%02d".format(h12, v % 60),
+                    size = 60.sp, weight = FontWeight.Bold,
+                    modifier = Modifier.alignByBaseline()
+                )
+                Spacer(Modifier.width(10.dp))
+                Txt(
+                    if (h >= 12) "PM" else "AM",
+                    size = 22.sp, weight = FontWeight.SemiBold, color = Ink.accent,
+                    modifier = Modifier.alignByBaseline()
+                )
+            }
         }
-        Spacer(Modifier.height(10.dp))
-        Txt(
-            "Tap to change", size = 13.sp, color = Ink.muted,
-            align = TextAlign.Center, modifier = Modifier.fillMaxWidth()
-        )
+        Spacer(Modifier.height(14.dp))
+
+        // 3 · supporting line
+        Txt("A nudge to plan tomorrow, every day.", size = 14.sp, color = Ink.muted)
     }
 }
