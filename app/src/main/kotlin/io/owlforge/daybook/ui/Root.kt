@@ -61,6 +61,26 @@ import androidx.activity.result.PickVisualMediaRequest
 import io.owlforge.daybook.ui.screens.AvatarSheetContent
 import io.owlforge.daybook.ui.screens.NameSheetContent
 import io.owlforge.daybook.ui.screens.TimeSheetContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.launch
 
 @Composable
 fun DaybookRoot(vm: MainViewModel) {
@@ -122,7 +142,11 @@ private fun Shell(vm: MainViewModel, p: Profile) {
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = tab,
-            transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(150)) },
+            transitionSpec = {
+                val dir = if (targetState > initialState) 1 else -1
+                (slideInHorizontally(tween(340, easing = FastOutSlowInEasing)) { dir * it / 5 } + fadeIn(tween(260))) togetherWith
+                    (slideOutHorizontally(tween(260, easing = FastOutSlowInEasing)) { -dir * it / 5 } + fadeOut(tween(160)))
+            },
             label = "tabs"
         ) { t ->
             when (t) {
@@ -132,18 +156,22 @@ private fun Shell(vm: MainViewModel, p: Profile) {
             }
         }
 
-        if (tab == 0) {
+        AnimatedVisibility(
+            visible = tab == 0,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 84.dp),
+            enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.8f) + slideInVertically { it / 2 },
+            exit = fadeOut(tween(150)) + scaleOut(targetScale = 0.8f) + slideOutVertically { it / 2 },
+        ) {
             val bob by rememberInfiniteTransition(label = "fab").animateFloat(
                 -6f, 6f, infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
                 label = "bob"
             )
             Capsule(
                 "＋  Plan a task", Ink.accent, filled = true,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 84.dp)
-                    .graphicsLayer { translationY = bob }
+                modifier = Modifier.graphicsLayer { translationY = bob }
             ) { vm.showAdd.value = true }
         }
 
@@ -158,9 +186,10 @@ private fun Shell(vm: MainViewModel, p: Profile) {
                 TaskDetailContent(
                     t,
                     onComplete = {
-                        vm.mark(t.id, TaskStatus.COMPLETED)
+                        vm.mark(t.id, TaskStatus.COMPLETED) { ok ->
+                            if (ok) { confettiLive = true; party++ }
+                        }
                         vm.openTaskId.value = null
-                        confettiLive = true; party++
                     },
                     onIncomplete = {
                         vm.mark(t.id, TaskStatus.INCOMPLETE)
@@ -212,26 +241,77 @@ private fun Celebration() {
 @Composable
 private fun BottomNav(selected: Int, modifier: Modifier, onSelect: (Int) -> Unit) {
     val items = listOf("Plan", "Journal", "You")
-    Row(
+    val slot = 96.dp
+    val haptic = LocalHapticFeedback.current
+
+    // Liquid indicator: the edge in the direction of travel moves fast, the other lags → stretch, then settle.
+    val left = remember { Animatable(selected.toFloat()) }
+    val right = remember { Animatable(selected + 1f) }
+    LaunchedEffect(selected) {
+        val t = selected.toFloat()
+        val movingRight = t > left.value
+        val fast = spring<Float>(dampingRatio = 0.75f, stiffness = 520f)
+        val slow = spring<Float>(dampingRatio = 0.75f, stiffness = 200f)
+        launch { left.animateTo(t, if (movingRight) slow else fast) }
+        launch { right.animateTo(t + 1f, if (movingRight) fast else slow) }
+    }
+
+    // slide up on first appearance
+    val enter = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { enter.animateTo(1f, spring(dampingRatio = 0.7f, stiffness = 200f)) }
+
+    Box(
         modifier
+            .graphicsLayer {
+                alpha = enter.value.coerceIn(0f, 1f)
+                translationY = (1f - enter.value) * 120f
+            }
             .navigationBarsPadding()
             .padding(bottom = 12.dp)
             .background(Ink.surface, CircleShape)
             .border(1.dp, Ink.line, CircleShape)
-            .padding(6.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(6.dp)
     ) {
-        items.forEachIndexed { i, label ->
-            val on = i == selected
-            val bg by animateColorAsState(if (on) Ink.accent else Ink.surface, tween(250), label = "navbg")
-            Box(
-                Modifier
-                    .background(bg, CircleShape)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
-                    .padding(horizontal = 22.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Txt(label, weight = FontWeight.SemiBold, size = 14.sp, color = if (on) Ink.bg else Ink.muted)
+        // indicator, drawn in the draw phase so the animation never triggers recomposition
+        Box(
+            Modifier.matchParentSize().drawBehind {
+                val slotPx = slot.toPx()
+                val x = left.value * slotPx
+                val w = ((right.value - left.value) * slotPx).coerceAtLeast(0f)
+                drawRoundRect(
+                    Ink.accent,
+                    topLeft = Offset(x, 0f),
+                    size = Size(w, size.height),
+                    cornerRadius = CornerRadius(size.height / 2)
+                )
+            }
+        )
+        Row {
+            items.forEachIndexed { i, label ->
+                val on = i == selected
+                val color by animateColorAsState(if (on) Ink.bg else Ink.muted, tween(250), label = "navText")
+                val scale by animateFloatAsState(
+                    if (on) 1.06f else 1f,
+                    spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium),
+                    label = "navScale"
+                )
+                Box(
+                    Modifier
+                        .width(slot)
+                        .height(44.dp)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                            if (!on) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onSelect(i)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Txt(
+                        label, weight = FontWeight.SemiBold, size = 14.sp, color = color,
+                        modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
+                    )
+                }
             }
         }
     }

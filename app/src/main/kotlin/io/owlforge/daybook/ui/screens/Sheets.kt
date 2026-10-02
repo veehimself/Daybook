@@ -57,6 +57,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 
 
 private fun defaultStartMinutes(dayOffset: Int): Int {
@@ -182,10 +184,22 @@ private fun TimeChip(label: String, value: String, selected: Boolean, modifier: 
         }
     }
 }
+
 /** Opened from the "did you finish?" notification (or by tapping any task card). */
 @Composable
 fun ColumnScope.TaskDetailContent(t: PlanTask, onComplete: () -> Unit, onIncomplete: () -> Unit) {
     val date = Instant.ofEpochMilli(t.startMillis).atZone(zone).toLocalDate()
+    val endDate = Instant.ofEpochMilli(t.endMillis).atZone(zone).toLocalDate()
+
+    // Wall-clock gate (date + time): ticks only until the end passes, then unlocks live.
+    val now by produceState(System.currentTimeMillis(), t.endMillis) {
+        while (value < t.endMillis) {
+            delay(1_000)
+            value = System.currentTimeMillis()
+        }
+    }
+    val canMark = now >= t.endMillis
+
     Txt(fmtDate(date), size = 14.sp, color = Ink.muted)
     Spacer(Modifier.height(6.dp))
     Txt(t.title, size = 28.sp, weight = FontWeight.Bold)
@@ -201,9 +215,16 @@ fun ColumnScope.TaskDetailContent(t: PlanTask, onComplete: () -> Unit, onIncompl
         Spacer(Modifier.weight(1f))
         StatusBadge(t.status)
     }
-    Spacer(Modifier.height(28.dp))
+    Spacer(Modifier.height(24.dp))
+    if (!canMark) {
+        Txt(
+            "You can mark this once it ends · ${fmtDate(endDate)}, ${fmtTime(t.endMillis)}",
+            size = 13.sp, color = Ink.muted,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Capsule("Complete", Ink.mint, Modifier.weight(1f), onClick = onComplete)
-        Capsule("Incomplete", Ink.coral, Modifier.weight(1f), onClick = onIncomplete)
+        Capsule("Complete", Ink.mint, Modifier.weight(1f), enabled = canMark, onClick = onComplete)
+        Capsule("Incomplete", Ink.coral, Modifier.weight(1f), enabled = canMark, onClick = onIncomplete)
     }
 }

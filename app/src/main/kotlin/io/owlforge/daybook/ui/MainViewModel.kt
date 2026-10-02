@@ -126,6 +126,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun mark(id: Long, status: Int) = viewModelScope.launch { a.repo.mark(id, status) }
+    fun mark(id: Long, status: Int, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch { onResult(a.repo.mark(id, status)) }
+    }    
     fun delete(t: PlanTask) = viewModelScope.launch { a.repo.delete(t) }
 }

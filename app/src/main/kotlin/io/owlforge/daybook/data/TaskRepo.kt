@@ -37,9 +37,13 @@ class TaskRepo(
         return AddResult.Ok(id)
     }
 
-    suspend fun mark(id: Long, status: Int) {
+    /** Only allowed once the task's end (date + time, system clock) has passed. Returns false if too early. */
+    suspend fun mark(id: Long, status: Int): Boolean {
+        val task = dao.get(id) ?: return false
+        if (System.currentTimeMillis() < task.endMillis) return false
         dao.setStatus(id, status)
         notifier.cancelDone(id)
+        return true
     }
 
     suspend fun delete(task: PlanTask) {

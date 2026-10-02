@@ -160,11 +160,13 @@ fun Capsule(
     color: Color,
     modifier: Modifier = Modifier,
     filled: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Box(
         modifier
-            .bounceClick(onClick)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.35f }
+            .bounceClick { if (enabled) onClick() }
             .background(if (filled) color else Color.Transparent, CircleShape)
             .border(1.5.dp, color, CircleShape)
             .padding(horizontal = 22.dp, vertical = 14.dp),
