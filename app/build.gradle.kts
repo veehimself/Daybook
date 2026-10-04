@@ -13,8 +13,8 @@ android {
         applicationId = "io.owlforge.daybook"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10401
-        versionName = "1.4.1"
+        versionCode = 10402
+        versionName = "1.4.2"
     }
 
     // Release signing is fed by env vars (set by CI). Without them the APK is built unsigned.

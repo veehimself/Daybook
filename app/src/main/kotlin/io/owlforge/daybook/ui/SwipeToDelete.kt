@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -33,17 +34,24 @@ import kotlin.math.roundToInt
 
 /**
  * Right-to-left swipe to delete. The content can never be dragged to the right:
- * its offset is clamped to [-width, 0].
+ * its offset is clamped to [-width, 0]. When [enabled] is false the card doesn't move at all,
+ * and if it becomes disabled mid-swipe it springs back.
  */
 @Composable
 fun SwipeToDelete(
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onDelete: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val offset = remember { Animatable(0f) }
     var width by remember { mutableFloatStateOf(1f) }
+
+    // e.g. the task just started or got marked while the card was being dragged
+    LaunchedEffect(enabled) {
+        if (!enabled) offset.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f))
+    }
 
     Box(modifier.onSizeChanged { width = it.width.toFloat().coerceAtLeast(1f) }) {
         // revealed layer (invisible while the card is at rest, so no edge bleed)
@@ -75,6 +83,7 @@ fun SwipeToDelete(
             Modifier
                 .offset { IntOffset(offset.value.roundToInt(), 0) }
                 .draggable(
+                    enabled = enabled,
                     orientation = Orientation.Horizontal,
                     state = rememberDraggableState { delta ->
                         scope.launch { offset.snapTo((offset.value + delta).coerceIn(-width, 0f)) }

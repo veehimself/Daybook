@@ -49,9 +49,19 @@ class TaskRepo(
         return true
     }
 
-    suspend fun delete(task: PlanTask) {
-        dao.delete(task)
-        scheduler.cancelTask(task.id)
-        notifier.cancelAll(task.id)
+        /**
+     * A task can only be deleted while it's still pending and not running.
+     * Marked (complete/incomplete) and in-progress tasks are protected. Returns false if refused.
+     */
+    suspend fun delete(task: PlanTask): Boolean {
+        val current = dao.get(task.id) ?: return false
+        val now = System.currentTimeMillis()
+        val inProgress = now >= current.startMillis && now < current.endMillis
+        if (current.status != TaskStatus.PENDING || inProgress) return false
+
+        dao.delete(current)
+        scheduler.cancelTask(current.id)
+        notifier.cancelAll(current.id)
+        return true
     }
 }

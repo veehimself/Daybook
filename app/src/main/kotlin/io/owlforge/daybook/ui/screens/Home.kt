@@ -180,6 +180,8 @@ private fun TaskCard(
     val pending = t.status == TaskStatus.PENDING
     val active = pending && now >= t.startMillis && now < t.endMillis
     val needsReview = pending && now >= t.endMillis
+    // only pending tasks that aren't running can be deleted (marked and in-progress tasks are protected)
+    val deletable = pending && !active
     val accent = when {
         t.status == TaskStatus.COMPLETED -> Ink.mint
         t.status == TaskStatus.INCOMPLETE -> Ink.coral
@@ -189,7 +191,7 @@ private fun TaskCard(
     }
     val shape = RoundedCornerShape(24.dp)
 
-    SwipeToDelete(modifier = modifier.clip(shape), onDelete = onDelete) {
+    SwipeToDelete(modifier = modifier.clip(shape), enabled = deletable, onDelete = onDelete) {
         Row(
             Modifier
                 .fillMaxWidth()
