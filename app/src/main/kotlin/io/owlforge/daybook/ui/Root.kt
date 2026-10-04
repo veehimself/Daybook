@@ -81,6 +81,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlinx.coroutines.launch
+import io.owlforge.daybook.R
 
 @Composable
 fun DaybookRoot(vm: MainViewModel) {
@@ -170,7 +171,8 @@ private fun Shell(vm: MainViewModel, p: Profile) {
                 label = "bob"
             )
             Capsule(
-                "＋  Plan a task", Ink.accent, filled = true,
+                "Plan a task", Ink.accent, filled = true,
+                icon = R.drawable.ic_add,
                 modifier = Modifier.graphicsLayer { translationY = bob }
             ) { vm.showAdd.value = true }
         }

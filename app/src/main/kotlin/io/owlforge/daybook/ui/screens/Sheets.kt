@@ -59,7 +59,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.delay
-
+import io.owlforge.daybook.R
+import io.owlforge.daybook.data.TaskStatus
+import io.owlforge.daybook.ui.AppIcon
 
 private fun defaultStartMinutes(dayOffset: Int): Int {
     if (dayOffset == 1) return 9 * 60
@@ -130,7 +132,7 @@ fun ColumnScope.AddTaskContent(
             } else {
                 endTouched = true
                 end = v // the hour wheel flips AM/PM itself when it crosses 11 ↔ 12
-            }        
+            }
         }
     }
 
@@ -190,6 +192,7 @@ private fun TimeChip(label: String, value: String, selected: Boolean, modifier: 
 fun ColumnScope.TaskDetailContent(t: PlanTask, onComplete: () -> Unit, onIncomplete: () -> Unit) {
     val date = Instant.ofEpochMilli(t.startMillis).atZone(zone).toLocalDate()
     val endDate = Instant.ofEpochMilli(t.endMillis).atZone(zone).toLocalDate()
+    val decided = t.status != TaskStatus.PENDING
 
     // Wall-clock gate (date + time): ticks only until the end passes, then unlocks live.
     val now by produceState(System.currentTimeMillis(), t.endMillis) {
@@ -216,15 +219,30 @@ fun ColumnScope.TaskDetailContent(t: PlanTask, onComplete: () -> Unit, onIncompl
         StatusBadge(t.status)
     }
     Spacer(Modifier.height(24.dp))
-    if (!canMark) {
-        Txt(
-            "You can mark this once it ends · ${fmtDate(endDate)}, ${fmtTime(t.endMillis)}",
-            size = 13.sp, color = Ink.muted,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Capsule("Complete", Ink.mint, Modifier.weight(1f), enabled = canMark, onClick = onComplete)
-        Capsule("Incomplete", Ink.coral, Modifier.weight(1f), enabled = canMark, onClick = onIncomplete)
+
+    if (decided) {
+        // Final: a recorded decision can't be overwritten.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AppIcon(R.drawable.ic_lock, Ink.muted, 16.dp)
+            Spacer(Modifier.width(8.dp))
+            Txt(
+                if (t.status == TaskStatus.COMPLETED) "Marked complete · this can't be changed"
+                else "Marked incomplete · this can't be changed",
+                size = 14.sp, color = Ink.muted
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+    } else {
+        if (!canMark) {
+            Txt(
+                "You can mark this once it ends · ${fmtDate(endDate)}, ${fmtTime(t.endMillis)}",
+                size = 13.sp, color = Ink.muted,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Capsule("Complete", Ink.mint, Modifier.weight(1f), enabled = canMark, onClick = onComplete)
+            Capsule("Incomplete", Ink.coral, Modifier.weight(1f), enabled = canMark, onClick = onIncomplete)
+        }
     }
 }

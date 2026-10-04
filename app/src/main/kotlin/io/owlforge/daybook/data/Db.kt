@@ -50,6 +50,10 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE endMillis > :now")
     suspend fun upcoming(now: Long): List<PlanTask>
 
+    /** Sets the outcome only while the task is still pending (status 0), so a decision can never be overwritten. */
+    @Query("UPDATE tasks SET status = :status WHERE id = :id AND status = 0")
+    suspend fun decide(id: Long, status: Int): Int
+
     @Insert
     suspend fun insert(task: PlanTask): Long
 

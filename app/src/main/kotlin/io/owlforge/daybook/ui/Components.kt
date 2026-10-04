@@ -74,6 +74,8 @@ import io.owlforge.daybook.data.TaskStatus
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.unit.isSpecified
+import androidx.compose.foundation.layout.Spacer
+import io.owlforge.daybook.R
 
 // ───────────────────────── text ─────────────────────────
 
@@ -161,8 +163,10 @@ fun Capsule(
     modifier: Modifier = Modifier,
     filled: Boolean = false,
     enabled: Boolean = true,
+    icon: Int? = null,
     onClick: () -> Unit,
 ) {
+    val content = if (filled) Ink.bg else color
     Box(
         modifier
             .graphicsLayer { alpha = if (enabled) 1f else 0.35f }
@@ -172,23 +176,29 @@ fun Capsule(
             .padding(horizontal = 22.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Txt(label, weight = FontWeight.SemiBold, color = if (filled) Ink.bg else color, size = 16.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                AppIcon(icon, content, 18.dp)
+                Spacer(Modifier.width(8.dp))
+            }
+            Txt(label, weight = FontWeight.SemiBold, color = content, size = 16.sp)
+        }
     }
 }
 
-/** ✔ / ✕ inside a capsule outline. */
+/** Check / cross icon inside a capsule outline (optionally a dash for "undecided"). */
 @Composable
 fun StatusBadge(status: Int, showPending: Boolean = false) {
-    val (sym, c) = when (status) {
-        TaskStatus.COMPLETED -> "✔" to Ink.mint
-        TaskStatus.INCOMPLETE -> "✕" to Ink.coral
-        else -> if (showPending) "–" to Ink.muted else return
+    val (icon, c) = when (status) {
+        TaskStatus.COMPLETED -> R.drawable.ic_check to Ink.mint
+        TaskStatus.INCOMPLETE -> R.drawable.ic_close to Ink.coral
+        else -> if (showPending) R.drawable.ic_remove to Ink.muted else return
     }
     Box(
         Modifier
             .border(1.5.dp, c, CircleShape)
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-    ) { Txt(sym, color = c, weight = FontWeight.Bold, size = 14.sp) }
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+    ) { AppIcon(icon, c, 16.dp) }
 }
 
 @Composable

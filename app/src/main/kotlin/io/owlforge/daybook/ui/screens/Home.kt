@@ -65,6 +65,8 @@ import me.saket.swipe.SwipeAction
 import me.saket.swipe.SwipeableActionsBox
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import io.owlforge.daybook.R
+import io.owlforge.daybook.ui.AppIcon
 
 
 @Composable
@@ -155,9 +157,10 @@ private fun EmptyState(offset: Int) {
     Column(
         Modifier.fillMaxWidth().padding(top = 56.dp).entrance(),
         horizontalAlignment = Alignment.CenterHorizontally
-    ) {        
-        Txt(
-            if (offset == 1) "🌙" else "☀️", size = 64.sp,
+    ) {
+        AppIcon(
+            if (offset == 1) R.drawable.ic_moon else R.drawable.ic_sun,
+            Ink.accent, 64.dp,
             modifier = Modifier.graphicsLayer { translationY = bob }
         )
         Spacer(Modifier.height(14.dp))

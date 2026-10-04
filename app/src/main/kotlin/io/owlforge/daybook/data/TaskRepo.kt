@@ -37,11 +37,14 @@ class TaskRepo(
         return AddResult.Ok(id)
     }
 
-    /** Only allowed once the task's end (date + time, system clock) has passed. Returns false if too early. */
+    /**
+     * Records the outcome. Rejected if the task hasn't ended yet (system clock + date)
+     * or if it was already marked: a decision is final.
+     */
     suspend fun mark(id: Long, status: Int): Boolean {
         val task = dao.get(id) ?: return false
         if (System.currentTimeMillis() < task.endMillis) return false
-        dao.setStatus(id, status)
+        if (dao.decide(id, status) == 0) return false
         notifier.cancelDone(id)
         return true
     }
