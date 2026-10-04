@@ -13,8 +13,8 @@ android {
         applicationId = "io.owlforge.daybook"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10400
-        versionName = "1.4.0"
+        versionCode = 10401
+        versionName = "1.4.1"
     }
 
     // Release signing is fed by env vars (set by CI). Without them the APK is built unsigned.
@@ -81,5 +81,4 @@ dependencies {
 
     // Fancy UI libs
     implementation("nl.dionsegijn:konfetti-compose:2.0.4")   // completion confetti
-    implementation("me.saket.swipe:swipe:1.3.0")             // swipe-to-delete on task cards
 }

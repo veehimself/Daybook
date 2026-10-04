@@ -44,6 +44,12 @@ import io.owlforge.daybook.ui.Ink
 import io.owlforge.daybook.ui.TimeWheel
 import io.owlforge.daybook.ui.Txt
 import io.owlforge.daybook.ui.entrance
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import io.owlforge.daybook.ui.Fonts
 
 @Composable
 fun Onboarding(onDone: (name: String, hour: Int, minute: Int) -> Unit) {
@@ -91,7 +97,7 @@ private fun NameStep(name: String, onName: (String) -> Unit) {
     )
     Column {
         Txt(
-            "👋🏽", size = 64.sp,            
+            "👋🏽", size = 64.sp,
             modifier = Modifier.graphicsLayer { rotationZ = wave; transformOrigin = TransformOrigin(0.7f, 0.8f) }
         )
         Spacer(Modifier.height(16.dp))
@@ -100,20 +106,28 @@ private fun NameStep(name: String, onName: (String) -> Unit) {
         Spacer(Modifier.height(28.dp))
         BasicTextField(
             value = name,
-            onValueChange = onName,
+            onValueChange = { if (it.length <= 24) onName(it) },
             singleLine = true,
-            textStyle = TextStyle(color = Ink.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold),
+            textStyle = TextStyle(
+                color = Ink.text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, fontFamily = Fonts.sans
+            ),
             cursorBrush = SolidColor(Ink.accent),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Done
+            ),
+            // hint overlays the input line (fixed-height field) and disappears on the first keystroke
             decorationBox = { inner ->
-                Column {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
                     if (name.isEmpty()) Txt("Your name", size = 22.sp, color = Ink.muted)
                     inner()
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
+                .height(64.dp)
                 .border(1.dp, Ink.line, RoundedCornerShape(20.dp))
-                .padding(20.dp)
+                .padding(horizontal = 20.dp)
                 .entrance(2)
         )
     }

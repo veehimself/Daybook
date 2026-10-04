@@ -60,13 +60,10 @@ import io.owlforge.daybook.ui.entrance
 import io.owlforge.daybook.util.fmtCountdown
 import io.owlforge.daybook.util.fmtTime
 import io.owlforge.daybook.util.greeting
+import io.owlforge.daybook.ui.SwipeToDelete
 import kotlinx.coroutines.delay
-import me.saket.swipe.SwipeAction
-import me.saket.swipe.SwipeableActionsBox
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import io.owlforge.daybook.R
-import io.owlforge.daybook.ui.AppIcon
 
 
 @Composable
@@ -154,15 +151,12 @@ private fun EmptyState(offset: Int) {
     val bob by rememberInfiniteTransition(label = "bob").animateFloat(
         -20f, 20f, infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "b"
     )
+    val float = Modifier.graphicsLayer { translationY = bob }
     Column(
         Modifier.fillMaxWidth().padding(top = 56.dp).entrance(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AppIcon(
-            if (offset == 1) R.drawable.ic_moon else R.drawable.ic_sun,
-            Ink.accent, 64.dp,
-            modifier = Modifier.graphicsLayer { translationY = bob }
-        )
+        if (offset == 1) MoonIllustration(modifier = float) else SunIllustration(modifier = float)
         Spacer(Modifier.height(14.dp))
         Txt(
             if (offset == 1) "Tomorrow is a blank page" else "Nothing planned today",
@@ -192,17 +186,12 @@ private fun TaskCard(
         else -> Ink.muted
     }
     val shape = RoundedCornerShape(24.dp)
-    val delete = SwipeAction(
-        onSwipe = onDelete,
-        icon = { Txt("Delete", weight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 24.dp)) },
-        background = Ink.coral,
-    )
 
-    SwipeableActionsBox(modifier = modifier.clip(shape), endActions = listOf(delete)) {
+    SwipeToDelete(modifier = modifier.clip(shape), onDelete = onDelete) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Ink.card)
+                .background(Ink.card, shape)
                 .border(1.dp, if (active) Ink.accent.copy(alpha = 0.8f) else Ink.line, shape)
                 .bounceClick(onClick)
                 .padding(18.dp),
