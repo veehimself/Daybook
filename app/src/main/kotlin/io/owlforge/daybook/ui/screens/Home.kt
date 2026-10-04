@@ -64,6 +64,8 @@ import io.owlforge.daybook.ui.SwipeToDelete
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import io.owlforge.daybook.ui.MoonIllustration
+import io.owlforge.daybook.ui.SunIllustration
 
 
 @Composable
