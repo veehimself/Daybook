@@ -66,7 +66,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import io.owlforge.daybook.ui.MoonIllustration
 import io.owlforge.daybook.ui.SunIllustration
-
+import androidx.compose.animation.core.keyframes
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.unit.Dp
 
 @Composable
 fun HomeScreen(vm: MainViewModel, name: String) {
@@ -195,8 +198,9 @@ private fun TaskCard(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Ink.card, shape)
-                .border(1.dp, if (active) Ink.accent.copy(alpha = 0.8f) else Ink.line, shape)
+                .cardSurface(active, shape, 24.dp)
+                // running task: no border, the heartbeat is the highlight
+                .then(if (active) Modifier else Modifier.border(1.dp, Ink.line, shape))
                 .bounceClick(onClick)
                 .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -241,5 +245,38 @@ private fun CountdownRing(t: PlanTask, now: Long) {
             drawArc(Ink.accent, -90f, 360f * frac, false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
         }
         Txt(fmtCountdown(left), size = 14.sp, weight = FontWeight.Bold, mono = true, align = TextAlign.Center)
+    }
+}
+
+/**
+ * Card surface. Inactive: plain opaque card. Active (task running): the surface's transparency
+ * pulses like a heartbeat (lub-dub, then rest). Animated value is read in the draw phase only.
+ */
+@Composable
+private fun Modifier.cardSurface(active: Boolean, shape: RoundedCornerShape, radius: Dp): Modifier {
+    if (!active) return background(Ink.card, shape)
+
+    val beat by rememberInfiniteTransition(label = "heartbeat").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 1300
+                0f at 0 using FastOutSlowInEasing
+                1f at 130 using FastOutSlowInEasing      // lub
+                0.25f at 270 using FastOutSlowInEasing
+                0.75f at 400 using FastOutSlowInEasing   // dub
+                0f at 800 using FastOutSlowInEasing
+                0f at 1300                                // rest
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "beat"
+    )
+    return drawBehind {
+        drawRoundRect(
+            color = Ink.card.copy(alpha = 1f - 0.3f * beat),
+            cornerRadius = CornerRadius(radius.toPx())
+        )
     }
 }
